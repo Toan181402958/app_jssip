@@ -5,7 +5,7 @@
  * @format
  */
 
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   SafeAreaView,
@@ -19,6 +19,11 @@ import {
   View,
 } from 'react-native';
 import JsSIP from 'jssip';
+import reactotron from 'reactotron-react-native';
+if (__DEV__) {
+  import('./ReactotronConfig').then(() => console.log('Reactotron Configured'));
+}
+
 import {
   mediaDevices,
   MediaStream,
@@ -27,21 +32,16 @@ import {
   RTCPeerConnection,
   RTCSessionDescription,
 } from 'react-native-webrtc';
-import reactotron from 'reactotron-react-native';
-if (__DEV__) {
-  import('./ReactotronConfig').then(() => console.log('Reactotron Configured'));
-}
 
-// window.RTCPeerConnection = window.RTCPeerConnection || RTCPeerConnection;
-// window.RTCIceCandidate = window.RTCIceCandidate || RTCIceCandidate;
-// window.RTCSessionDescription =
-//   window.RTCSessionDescription || RTCSessionDescription;
-// window.MediaStream = window.MediaStream || MediaStream;
-// window.MediaStreamTrack = window.MediaStreamTrack || MediaStreamTrack;
-// window.navigator.mediaDevices = window.navigator.mediaDevices || mediaDevices;
-// window.navigator.getUserMedia =
-//   window.navigator.getUserMedia || mediaDevices.getUserMedia;
-
+window.RTCPeerConnection = window.RTCPeerConnection || RTCPeerConnection;
+window.RTCIceCandidate = window.RTCIceCandidate || RTCIceCandidate;
+window.RTCSessionDescription =
+  window.RTCSessionDescription || RTCSessionDescription;
+window.MediaStream = window.MediaStream || MediaStream;
+window.MediaStreamTrack = window.MediaStreamTrack || MediaStreamTrack;
+window.navigator.mediaDevices = window.navigator.mediaDevices || mediaDevices;
+window.navigator.getUserMedia =
+  window.navigator.getUserMedia || mediaDevices.getUserMedia;
 function App(): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const [form, setForm] = useState({
@@ -49,6 +49,11 @@ function App(): JSX.Element {
     account: '',
     pass: '',
   });
+  const jsSIP = useRef(null);
+
+  // const pc = new RTCPeerConnection({
+  //   iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
+  // });
 
   const options = {
     // eventHandlers: eventHandlers,
@@ -60,7 +65,7 @@ function App(): JSX.Element {
       rtcpMuxPolicy: 'negotiate',
       iceServers: [
         {
-          urls: ['stun:stun4.l.google.com:19302'],
+          urls: ['stun:stun.l.google.com:19302'],
         },
       ],
     },
@@ -82,9 +87,11 @@ function App(): JSX.Element {
       domain: 'cms.siptrunk.vn',
       debug: true,
     };
-    var ua = new JsSIP.UA(config);
-    connect(ua);
-    ua.start();
+    jsSIP.current = new JsSIP.UA(config);
+    // var ua = new JsSIP.UA(config);
+    // ua.o
+    connect();
+    jsSIP.current.start();
     var eventHandlers = {
       progress: function (e) {
         console.log('call is in progress');
@@ -105,47 +112,50 @@ function App(): JSX.Element {
       mediaConstraints: {audio: true, video: true},
     };
 
-    // var session = ua.call('sip:2007002@cms.siptrunk.vn', options);
+    var session = jsSIP.current.call('sip:2007002@cms.siptrunk.vn', options);
   };
 
-  const connect = (ua: JsSIP.UA) => {
+  const connect = () => {
     const callId = 'Test';
-    ua.on('connecting', data => {
+    jsSIP.current.on('connecting', data => {
       reactotron.log!('connecting', data);
     });
-    ua.on('connected', data => {
+    jsSIP.current.on('connected', data => {
       reactotron.log!('connected', data);
     });
-    ua.on('disconnected', data => {
+    jsSIP.current.on('disconnected', data => {
       reactotron.log!('disconnected', data);
     });
-    ua.on('registered', data => {
+    jsSIP.current.on('registered', data => {
       reactotron.log!('registered', data);
     });
-    ua.on('unregistered', data => {
+    jsSIP.current.on('unregistered', data => {
       reactotron.log!('unregistered', data);
     });
-    ua.on('registrationFailed', data => {
+    jsSIP.current.on('registrationFailed', data => {
       reactotron.log!('registrationFailed', data);
     });
-    ua.on('registrationExpiring', data => {
+    jsSIP.current.on('registrationExpiring', data => {
       reactotron.log!('unregistered', data);
     });
-    ua.on('newRTCSession', data => {
+    jsSIP.current.on('newRTCSession', data => {
       reactotron.log!('registrationFailed', data);
     });
-    ua.on('newMessage', data => {
+    jsSIP.current.on('newMessage', data => {
       reactotron.log!('unregistered', data);
     });
-    ua.on('sipEvent', data => {
+    jsSIP.current.on('sipEvent', data => {
       reactotron.log!('registrationFailed', data);
     });
-    // ua.call(`sip:2007001@cms.siptrunk.vn`, {
+
+    // jsSIP.current.call(`sip:2007001@cms.siptrunk.vn`, {
     //   ...options,
     //   extraHeaders: [`X-ez_callId: ${callId}`],
     // });
   };
-  const call = () => {};
+  const call = () => {
+    jsSIP.current.stop();
+  };
   const item = (title: String, onChangeText: (text: String) => void) => {
     return (
       <View style={styles.item}>
@@ -171,11 +181,11 @@ function App(): JSX.Element {
         style={styles.btn}
         children={<Text style={{color: 'white'}} children={'Enter'} />}
       />
-      {/* <TouchableOpacity
+      <TouchableOpacity
         onPress={call}
         style={styles.btn}
         children={<Text style={{color: 'white'}} children={'Call'} />}
-      /> */}
+      />
     </SafeAreaView>
   );
 }
